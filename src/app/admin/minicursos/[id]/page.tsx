@@ -1,9 +1,7 @@
 import { db } from '@/lib/db';
-import { requireAdmin } from '@/lib/admin';
 import { notFound } from 'next/navigation';
 import { WorkshopAdmin } from '../ui';
 export default async function WorkshopDetail({params}:{params:Promise<{id:string}>}){
-  await requireAdmin();
   const {id}=await params;const client=db();
   const {data:w,error}=await client.from('workshops').select('id,title,teacher,event_date,workload').eq('id',id).maybeSingle();
   if(error)throw error;if(!w)notFound();

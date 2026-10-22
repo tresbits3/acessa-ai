@@ -1,8 +1,6 @@
 import { db } from '@/lib/db';
-import { requireAdmin } from '@/lib/admin';
 const formatDate=(date:string)=>new Date(date+'T12:00:00Z').toLocaleDateString('pt-BR',{timeZone:'UTC',day:'2-digit',month:'short',year:'numeric'});
 export default async function AdminHome(){
-  await requireAdmin();
   const client=db();
   const [{data:workshops,error:workshopError},{count:students,error:studentError},{count:lectures,error:lectureError}]=await Promise.all([
     client.from('workshops').select('id,title,teacher,event_date,workload').order('event_date'),

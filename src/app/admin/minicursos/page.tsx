@@ -1,9 +1,7 @@
 import { db } from '@/lib/db';
-import { requireAdmin } from '@/lib/admin';
 import { BundleAll } from './ui';
 const formatDate=(date:string)=>new Date(date+'T12:00:00Z').toLocaleDateString('pt-BR',{timeZone:'UTC',day:'2-digit',month:'long',year:'numeric'});
 export default async function WorkshopPage(){
-  await requireAdmin();
   const client=db();
   const {data:workshops,error}=await client.from('workshops').select('id,title,teacher,event_date,workload').order('event_date');
   if(error)throw error;
