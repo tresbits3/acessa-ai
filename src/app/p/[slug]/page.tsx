@@ -1,0 +1,5 @@
+import { db } from '@/lib/db';import { notFound } from 'next/navigation';import { EnrollmentForm } from './registration-form';import { lecturePhase } from '@/lib/lecture-date';
+export default async function LecturePage({params}:{params:Promise<{slug:string}>}){
+ const {slug}=await params;const {data:l,error}=await db().from('lectures').select('id,title,speaker,event_date,workload').eq('slug',slug).is('deleted_at',null).maybeSingle();if(error)throw error;if(!l)notFound();const phase=lecturePhase(l.event_date);
+ return <><header className="public-header"><div className="brand"><span className="brand-mark" aria-hidden="true">F</span><span className="brand-name">Acessa Ai</span></div></header><main className="public-main"><div className="card public-card"><p className="eyebrow">Certificado da palestra</p><h1>{l.title}</h1><p className="muted">Com {l.speaker}<br/>{new Date(l.event_date+'T12:00:00Z').toLocaleDateString('pt-BR',{timeZone:'UTC',day:'2-digit',month:'long',year:'numeric'})}{l.workload?` · ${l.workload}`:''}</p><hr/>{phase==='before'?<p>O cadastro estará disponível na data da palestra.</p>:<EnrollmentForm id={l.id} phase={phase}/>}</div></main></>;
+}

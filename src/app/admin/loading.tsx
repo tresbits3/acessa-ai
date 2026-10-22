@@ -1,0 +1,1 @@
+export default function AdminLoading(){return <div className="card" role="status" aria-live="polite"><p className="eyebrow">Organização</p><h1>Carregando dados…</h1><p className="muted">Aguarde enquanto consultamos as atividades.</p></div>}

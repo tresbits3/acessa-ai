@@ -1,0 +1,1 @@
+export default function Loading(){return <main className="public-main"><div className="card public-card" role="status" aria-live="polite"><p className="eyebrow">Acessa Ai</p><h1>Carregando…</h1><p className="muted">Estamos preparando esta página.</p></div></main>}
