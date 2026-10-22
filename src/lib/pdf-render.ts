@@ -22,8 +22,13 @@ export async function renderCertificate(data:CertificateData){
   const displayName=data.student.toLocaleUpperCase('pt-BR');
   let name:{size:number;lines:string[]};
   try{name=fitted(displayName,nameFont,510,2,33,16)}
-  catch{name=fitted(displayName,nameFont,510,3,22,14)}
-  drawCentered(page,name.lines,nameFont,name.size,name.lines.length===1?351:name.lines.length===2?373:373,name.lines.length===2?32:24,green);
+  catch{
+    try{name=fitted(displayName,nameFont,510,3,22,14)}
+    catch{name=fitted(displayName,nameFont,510,4,16,10)}
+  }
+  const nameTop=name.lines.length===1?351:name.lines.length===2?373:name.lines.length===3?373:393;
+  const nameStep=name.lines.length===2?32:name.lines.length===3?24:19;
+  drawCentered(page,name.lines,nameFont,name.size,nameTop,nameStep,green);
   const body=data.kind==='lecture'
     ? `ministrada por ${data.instructor} em ${datePt(data.eventDate)}.${data.workload?` Carga horária: ${data.workload}.`:''} Avaré - SP - UniFSP Campus Avaré.${data.details?` ${data.details}`:''}`
     : `ministrado por ${data.instructor}${data.workload?`, com carga horária de ${data.workload}`:''}, realizado em ${datePt(data.eventDate)}, em Avaré - SP.${data.details?` ${data.details}`:''}`;

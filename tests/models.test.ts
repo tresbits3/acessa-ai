@@ -57,6 +57,7 @@ describe('modelos e certificados', () => {
       'joão correa',
       'Érica de Ávila',
       'Maria Fernanda Correa de Ávila e Albuquerque dos Santos Pereira da Costa',
+      'Ana Maria '.repeat(18).trim(),
     ];
 
     for (const [kind, certificateKind] of [['palestra', 'lecture'], ['minicurso', 'workshop']] as const) {

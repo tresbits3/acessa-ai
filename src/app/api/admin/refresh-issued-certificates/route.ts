@@ -34,8 +34,18 @@ export async function POST(request: Request) {
   }
 
   for (let offset = 0; offset < ids.length; offset += 5) {
-    const batch = await Promise.allSettled(ids.slice(offset, offset + 5).map(storedCertificate));
-    for (const result of batch) result.status === 'fulfilled' ? updated++ : failed++;
+    const batch = await Promise.all(ids.slice(offset, offset + 5).map(async id => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          await storedCertificate(id);
+          return true;
+        } catch {
+          if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
+        }
+      }
+      return false;
+    }));
+    for (const succeeded of batch) succeeded ? updated++ : failed++;
   }
 
   return Response.json({ updated, skipped, failed }, { status: failed ? 500 : 200 });
