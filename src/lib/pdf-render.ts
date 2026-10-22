@@ -13,16 +13,17 @@ export async function renderCertificate(data:CertificateData){
   const pdf=await PDFDocument.load(await readFile(path.join(process.cwd(),'models',filename)));
   pdf.registerFontkit(fontkit);const page=pdf.getPage(0);
   const regular=await pdf.embedFont(StandardFonts.TimesRoman),bold=await pdf.embedFont(StandardFonts.TimesRomanBold);
-  const script=await pdf.embedFont(await readFile(path.join(process.cwd(),'assets','GreatVibes-Regular.ttf')));
+  const nameFont=await pdf.embedFont(await readFile(path.join(process.cwd(),'assets','LiberationSans-Regular.ttf')));
   const green=rgb(.09,.227,.192),muted=rgb(.325,.380,.345);
   const upperTitle=data.title.toLocaleUpperCase('pt-BR');
   const title=bold.widthOfTextAtSize(upperTitle,27)<=485
     ? {size:27,lines:[upperTitle]} : fitted(upperTitle,bold,485,2,18,9);
   drawCentered(page,title.lines,bold,title.size,title.lines.length===1?249:262,title.lines.length===1?0:20,green);
-  const name=script.widthOfTextAtSize(data.student,40)<=510
-    ? {size:40,lines:[data.student]}
-    : (()=>{try{return fitted(data.student,script,510,2,28,18)}catch{return fitted(data.student,script,510,3,18,12)}})();
-  drawCentered(page,name.lines,script,name.size,name.lines.length===1?351:name.lines.length===2?373:383,name.lines.length===2?32:24,green);
+  const displayName=data.student.toLocaleUpperCase('pt-BR');
+  let name:{size:number;lines:string[]};
+  try{name=fitted(displayName,nameFont,510,2,33,16)}
+  catch{name=fitted(displayName,nameFont,510,3,22,14)}
+  drawCentered(page,name.lines,nameFont,name.size,name.lines.length===1?351:name.lines.length===2?373:373,name.lines.length===2?32:24,green);
   const body=data.kind==='lecture'
     ? `ministrada por ${data.instructor} em ${datePt(data.eventDate)}.${data.workload?` Carga horária: ${data.workload}.`:''} Avaré - SP - UniFSP Campus Avaré.${data.details?` ${data.details}`:''}`
     : `ministrado por ${data.instructor}${data.workload?`, com carga horária de ${data.workload}`:''}, realizado em ${datePt(data.eventDate)}, em Avaré - SP.${data.details?` ${data.details}`:''}`;
