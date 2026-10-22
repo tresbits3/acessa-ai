@@ -33,7 +33,7 @@ export async function storedCertificate(id: string) {
   const client = db();
   const data = await certificateData(id);
   if (!data) throw new Error('Certificado não encontrado');
-  const file = data.kind === 'workshop' ? `${id}-v${data.revision}.pdf` : `${id}.pdf`;
+  const file = `${id}-v${data.revision}.pdf`;
   const bucket = client.storage.from('certificates');
   const existing = await bucket.download(file);
   if (!existing.error && existing.data) {
