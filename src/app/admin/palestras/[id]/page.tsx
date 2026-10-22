@@ -8,5 +8,5 @@ export default async function LectureDetailPage({params}:{params:Promise<{id:str
   const {data:participants,error:peopleError}=await client.from('participants').select('id,full_name,phone_e164,email,certificates(id)').eq('lecture_id',id).order('full_name');if(peopleError)throw peopleError;
   const lectureUrl=`${origin()}/p/${lecture.slug}`;
   const qr=await QRCode.toDataURL(lectureUrl,{width:320,margin:2});
-  return <LectureDetail lecture={lecture} participants={(participants||[]).map(p=>({id:p.id,name:p.full_name,phone:p.phone_e164,email:p.email,certificateId:(p.certificates as unknown as {id:string}[])?.[0]?.id||''}))} lectureUrl={lectureUrl} qr={qr}/>;
+  return <LectureDetail lecture={lecture} participants={(participants||[]).map(p=>({id:p.id,name:p.full_name,phone:p.phone_e164,email:p.email,certificateId:(p.certificates as unknown as {id:string}|null)?.id||''}))} lectureUrl={lectureUrl} qr={qr}/>;
 }
