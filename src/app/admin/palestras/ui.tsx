@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 
-type Lecture = {id:string;title:string;speaker:string;event_date:string;workload:string|null;deleted_at:string|null;participantCount:number;certificateCount:number};
+type Lecture = {id:string;title:string;speaker:string;event_date:string;workload:string|null;deleted_at:string|null};
 const date=(value:string)=>new Date(value+'T12:00:00Z').toLocaleDateString('pt-BR',{timeZone:'UTC',day:'2-digit',month:'long',year:'numeric'});
 
 export function LectureAdmin({lectures}:{lectures:Lecture[]}){
