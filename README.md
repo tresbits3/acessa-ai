@@ -29,9 +29,12 @@ Em `/admin/minicursos`, a organização edita os dados de cada curso, adiciona, 
 
 Cada palestra recebe QR Code próprio para `/p/slug` e link de recuperação em `/r/slug`. O cadastro abre e fecha separadamente; o link de recuperação apenas consulta registros existentes e segue disponível após o fechamento. Nome e celular localizam um cadastro, mas não verificam a posse do número. Não apresente o processo como autenticação por celular. Os links de certificados são compartilháveis por identificador não adivinhável. Para enviar o PDF pelo WhatsApp quando o navegador não compartilha arquivos, baixe o PDF e anexe manualmente.
 
+No detalhe de cada palestra em `/admin/palestras/:id`, a organização pode cadastrar participantes manualmente com nome, celular e e-mail opcional, mesmo fora da data da palestra. O cadastro gera o certificado individual; repetir o mesmo nome e celular retorna o certificado existente. Celular já vinculado a outro nome na mesma palestra é recusado. A migração `202610260001_manual_lecture_registration.sql` deve ser aplicada antes de usar essa função.
+
 ## Contrato resumido
 
 - `POST /api/lectures/:id/register`: nome, celular e e-mail opcional; devolve o mesmo `certificateId` em repetições. Só a palestra do `id` é emitida.
+- `POST /api/admin/lectures/:id/participants`: nome, celular e e-mail opcional; cadastra manualmente em palestra ativa, em qualquer data, e devolve `participantId`, `certificateId` e `created`. Requer origem válida; repetição do mesmo nome e celular devolve o certificado existente.
 - `POST /api/lectures/:id/recover`: nome e celular; consulta com limite de cinco tentativas por IP a cada 15 minutos; nunca cria emissão.
 - `GET /api/certificates/:id`: PDF individual de palestra ou minicurso, acessível pelo identificador.
 - `/api/admin/*`: dispensa cookie administrativo; operações de escrita verificam `Origin` contra `APP_ORIGIN`.
