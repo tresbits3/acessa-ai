@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       if (id) ids.push(id);
     }
   }
-  try { for (let i = 0; i < ids.length; i += 5) await Promise.all(ids.slice(i, i + 5).map(storedCertificate)); }
+  try { for (let i = 0; i < ids.length; i += 5) await Promise.all(ids.slice(i, i + 5).map(id => storedCertificate(id))); }
   catch { return error('Importação registrada, mas falhou a geração de parte dos PDFs. Reimporte a mesma lista para concluir.', 500); }
   return Response.json({ preview, result: data });
 }

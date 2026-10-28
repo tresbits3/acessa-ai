@@ -30,33 +30,35 @@ export async function certificateData(id: string): Promise<StoredCertificateData
     revision: cert.revision, storagePath: cert.storage_path };
 }
 
-export async function storedCertificate(id: string) {
+export async function storedCertificate(id: string, knownData?: StoredCertificateData, attempt = 0): Promise<Uint8Array> {
   const client = db();
-  const data = await certificateData(id);
+  const data = knownData ?? await certificateData(id);
   if (!data) throw new Error('Certificado não encontrado');
   const file = certificateFile(data);
   const bucket = client.storage.from('certificates');
   const existing = await bucket.download(file);
-  if (!existing.error && existing.data) {
-    if (data.storagePath !== file) {
-      const updated = await client.from('certificates').update({ storage_path: file })
-        .eq('id', id).eq('revision', data.revision).select('id');
-      if (updated.error || !updated.data?.length) throw new Error('Certificado alterado durante a leitura; tente novamente.');
-      if (data.storagePath) await bucket.remove([data.storagePath]);
+  let bytes: Uint8Array;
+  if (!existing.error && existing.data) bytes = new Uint8Array(await existing.data.arrayBuffer());
+  else {
+    bytes = await renderCertificate(data);
+    const upload = await bucket.upload(file, bytes, { contentType: 'application/pdf', upsert: false });
+    if (upload.error) {
+      const again = await bucket.download(file);
+      if (again.error || !again.data) throw upload.error;
+      bytes = new Uint8Array(await again.data.arrayBuffer());
     }
-    return new Uint8Array(await existing.data.arrayBuffer());
   }
-  const bytes = await renderCertificate(data);
-  const upload = await bucket.upload(file, bytes, { contentType: 'application/pdf', upsert: false });
-  if (upload.error) {
-    const again = await bucket.download(file);
-    if (again.error || !again.data) throw upload.error;
-    return new Uint8Array(await again.data.arrayBuffer());
+  if (data.storagePath === file) return bytes;
+  let update = client.from('certificates').update({ storage_path: file })
+    .eq('id', id).eq('revision', data.revision);
+  update = data.storagePath === null ? update.is('storage_path', null) : update.eq('storage_path', data.storagePath);
+  const updated = await update.select('id');
+  if (updated.error) throw updated.error;
+  if (!updated.data?.length) {
+    if (attempt >= 2) throw new Error('Certificado alterado durante a geração; tente novamente.');
+    return storedCertificate(id, undefined, attempt + 1);
   }
-  const updated = await client.from('certificates').update({ storage_path: file })
-    .eq('id', id).eq('revision', data.revision).select('id');
-  if (updated.error || !updated.data?.length) throw new Error('Certificado alterado durante a geração; tente novamente.');
-  if (data.storagePath && data.storagePath !== file) await bucket.remove([data.storagePath]);
+  if (data.storagePath) await bucket.remove([data.storagePath]);
   return bytes;
 }
 
@@ -79,7 +81,13 @@ export async function purgeWorkshopCertificateFiles(studentIds: string[]) {
 }
 
 export async function bundle(ids: string[]) {
-  const documents: Uint8Array[] = [];
-  for (const id of ids) documents.push(await storedCertificate(id));
+  const documents: Uint8Array[] = new Array(ids.length);
+  let cursor = 0;
+  await Promise.all(Array.from({ length: Math.min(4, ids.length) }, async () => {
+    while (cursor < ids.length) {
+      const index = cursor++;
+      documents[index] = await storedCertificate(ids[index]);
+    }
+  }));
   return mergePdfBytes(documents);
 }
