@@ -1,6 +1,7 @@
 import 'server-only';
 import { db } from './db';
 import { CertificateData, renderCertificate, mergePdfBytes } from './pdf-render';
+import { certificateFile } from './certificate-file';
 export { renderCertificate } from './pdf-render';
 export type { CertificateData } from './pdf-render';
 
@@ -33,7 +34,7 @@ export async function storedCertificate(id: string) {
   const client = db();
   const data = await certificateData(id);
   if (!data) throw new Error('Certificado não encontrado');
-  const file = `${id}-v${data.revision}.pdf`;
+  const file = certificateFile(data);
   const bucket = client.storage.from('certificates');
   const existing = await bucket.download(file);
   if (!existing.error && existing.data) {
