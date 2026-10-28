@@ -1,9 +1,11 @@
 import { adminPost } from '@/lib/security';
 import { db } from '@/lib/db';
 import { bundle } from '@/lib/pdf';
-import { error, pdfStreamResponse } from '@/lib/response';
+import { error } from '@/lib/response';
+import { createHash } from 'node:crypto';
 
 export const maxDuration = 300;
+const bucketName = 'certificate-bundles';
 export async function POST(request: Request) {
   const denied = await adminPost(request); if (denied) return denied;
   try {
@@ -25,6 +27,19 @@ export async function POST(request: Request) {
     const started = performance.now();
     const bytes = await bundle(ids);
     console.info('certificate bundle ready', { count: ids.length, bytes: bytes.length, ms: Math.round(performance.now() - started) });
-    return pdfStreamResponse(bytes, 'certificados-minicursos.pdf', !!input.inline);
+    const bucketInfo = await client.storage.getBucket(bucketName);
+    if (bucketInfo.error) {
+      const created = await client.storage.createBucket(bucketName, {
+        public: false, fileSizeLimit: '50MB', allowedMimeTypes: ['application/pdf']
+      });
+      if (created.error && !(await client.storage.getBucket(bucketName)).data) throw created.error;
+    }
+    const bucket = client.storage.from(bucketName);
+    const file = `${createHash('sha256').update(bytes).digest('hex')}.pdf`;
+    const uploaded = await bucket.upload(file, bytes, { contentType: 'application/pdf', upsert: false });
+    if (uploaded.error && uploaded.error.statusCode !== '409') throw uploaded.error;
+    const signed = await bucket.createSignedUrl(file, 300, input.inline ? undefined : { download: 'certificados-minicursos.pdf' });
+    if (signed.error || !signed.data) throw signed.error ?? new Error('Link temporário indisponível');
+    return new Response(null, { status: 303, headers: { Location: signed.data.signedUrl, 'Cache-Control': 'private, no-store' } });
   } catch (e) { console.error('certificate bundle failed', e); return error('Falha ao montar PDF.', 500); }
 }

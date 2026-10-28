@@ -1,5 +1,6 @@
-import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from 'pdf-lib';
+import { PDFArray, PDFDict, PDFDocument, PDFName, PDFRef, PDFStream, StandardFonts, rgb, PDFFont, PDFPage } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 export type CertificateData={id:string;kind:'lecture'|'workshop';student:string;title:string;instructor:string;eventDate:string;workload?:string|null;details?:string|null};
@@ -44,5 +45,45 @@ export async function renderCertificate(data:CertificateData){
 export async function mergePdfBytes(documents:Uint8Array[]){
   const combined=await PDFDocument.create();
   for(const bytes of documents){const source=await PDFDocument.load(bytes);if(source.getPageCount()!==1)throw new Error('Certificado individual deve ter uma página');const [page]=await combined.copyPages(source,[0]);combined.addPage(page)}
+  // copyPages imports the same template images once per certificate. Share identical
+  // image streams, including transparency masks, without changing image quality.
+  for (let pass = 0; pass < 2; pass++) {
+    const canonical = new Map<string, PDFRef>();
+    const duplicates = new Map<string, PDFRef>();
+    for (const [ref, object] of combined.context.enumerateIndirectObjects()) {
+      if (!(object instanceof PDFStream) || object.dict.get(PDFName.of('Subtype'))?.toString() !== '/Image') continue;
+      const digest = createHash('sha256');
+      for (const [key, value] of object.dict.entries().sort(([a], [b]) => a.toString().localeCompare(b.toString()))) {
+        digest.update(key.toString()).update(value.toString());
+      }
+      digest.update(object.getContents());
+      const hash = digest.digest('hex');
+      const original = canonical.get(hash);
+      if (original) duplicates.set(ref.toString(), original);
+      else canonical.set(hash, ref);
+    }
+    if (!duplicates.size) continue;
+    const visit = (object: PDFDict | PDFArray) => {
+      if (object instanceof PDFDict) {
+        for (const [key, value] of object.entries()) {
+          if (value instanceof PDFRef && duplicates.has(value.toString())) object.set(key, duplicates.get(value.toString())!);
+          else if (value instanceof PDFDict || value instanceof PDFArray) visit(value);
+        }
+      } else {
+        for (let i = 0; i < object.size(); i++) {
+          const value = object.get(i);
+          if (value instanceof PDFRef && duplicates.has(value.toString())) object.set(i, duplicates.get(value.toString())!);
+          else if (value instanceof PDFDict || value instanceof PDFArray) visit(value);
+        }
+      }
+    };
+    for (const [, object] of combined.context.enumerateIndirectObjects()) {
+      if (object instanceof PDFStream) visit(object.dict);
+      else if (object instanceof PDFDict || object instanceof PDFArray) visit(object);
+    }
+    for (const ref of combined.context.enumerateIndirectObjects().map(([ref]) => ref)) {
+      if (duplicates.has(ref.toString())) combined.context.delete(ref);
+    }
+  }
   return new Uint8Array(await combined.save());
 }
